@@ -1,0 +1,2 @@
+# Robbery Detection ConvoLSTM Approach
+ The following jupyter notebook is my first approach at trying to recognize robbery from CCTV footage using deep learning techniques. The methodolgy used in this project is the use of CNN and LSTM to perform Spatial and Temporal analysis to detect the action from three different types of activities namely Robbery, Road Accidents and Normal videos. The dataset used is the UCF crime dataset and the results of this attempt indicate 96% training accuracy and 73% test accuracy.
