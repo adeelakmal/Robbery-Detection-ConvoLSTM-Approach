@@ -1,0 +1,18 @@
+{
+  "java.project.referencedLibraries": [
+    "lib/**/*.jar",
+    "c:\\Users\\Admin\\Downloads\\openjfx-19.0.2.1_windows-x64_bin-sdk\\javafx-sdk-19.0.2.1\\lib\\javafx.base.jar",
+    "c:\\Users\\Admin\\Downloads\\openjfx-19.0.2.1_windows-x64_bin-sdk\\javafx-sdk-19.0.2.1\\lib\\javafx.controls.jar",
+    "c:\\Users\\Admin\\Downloads\\openjfx-19.0.2.1_windows-x64_bin-sdk\\javafx-sdk-19.0.2.1\\lib\\javafx.fxml.jar",
+    "c:\\Users\\Admin\\Downloads\\openjfx-19.0.2.1_windows-x64_bin-sdk\\javafx-sdk-19.0.2.1\\lib\\javafx.graphics.jar",
+    "c:\\Users\\Admin\\Downloads\\openjfx-19.0.2.1_windows-x64_bin-sdk\\javafx-sdk-19.0.2.1\\lib\\javafx.media.jar",
+    "c:\\Users\\Admin\\Downloads\\openjfx-19.0.2.1_windows-x64_bin-sdk\\javafx-sdk-19.0.2.1\\lib\\javafx.swing.jar",
+    "c:\\Users\\Admin\\Downloads\\openjfx-19.0.2.1_windows-x64_bin-sdk\\javafx-sdk-19.0.2.1\\lib\\javafx.web.jar",
+    "c:\\Users\\Admin\\Downloads\\openjfx-19.0.2.1_windows-x64_bin-sdk\\javafx-sdk-19.0.2.1\\lib\\javafx-swt.jar",
+    "c:\\opencv\\build\\java\\opencv-470.jar"
+  ],
+  "java.project.sourcePaths": [
+    "OpenCVTest/src",
+    ".vscode"
+  ]
+}
