@@ -1,8 +1,10 @@
 import javafx.application.Application;
+// import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.VBox;
+// import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 
 import java.io.ByteArrayInputStream;
@@ -21,25 +23,37 @@ public class capture extends Application {
 
     class CameraThread extends Thread {
 
-        VideoCapture capture = new VideoCapture();
-        // VideoCapture capture = new
-        // VideoCapture("http://172.30.44.175:8080/shot.jpg");
-        // VideoCapture capture = new VideoCapture(0);
+        private final VideoCapture capture;
+        private final Mat frame;
+        private final ImageView imageView;
+
+        public CameraThread(int capture, ImageView imageView) {
+            this.capture = new VideoCapture(capture);
+            this.frame = new Mat();
+            this.imageView = imageView;
+
+        }
+
+        public CameraThread(String capture, ImageView imageView) {
+            this.capture = new VideoCapture(capture);
+            this.frame = new Mat();
+            this.imageView = imageView;
+        }
 
         @Override
         public void run() {
-            // capture.open("http://172.30.75.213:8080/video");
-            capture.open(
-                    "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery001_x264.mp4");
-            Mat frame = new Mat();
-            while (true) {
-                if (capture.read(frame)) {
-                    // Convert the OpenCV frame to a JavaFX image
-                    Image image = convertMatToImage(frame);
 
-                    // Display the image in the ImageView
-                    imageView.setImage(image);
-                    imageView1.setImage(image);
+            while (true) {
+                synchronized (this) {
+                    if (capture.read(frame)) {
+
+                        // Convert the OpenCV frame to a JavaFX image
+                        Image image = convertMatToImage(frame);
+
+                        // Display the image in the ImageView
+                        imageView.setImage(image);
+                        // imageView1.setImage(image);
+                    }
                 }
             }
         }
@@ -61,23 +75,36 @@ public class capture extends Application {
     public void start(Stage stage) {
 
         // Start the video capture thread
-        Thread videoCaptureThread = new CameraThread();
+        String capture1 = "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery001_x264.mp4";
+        String capture = "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery003_x264.mp4";
+
+        Thread videoCaptureThread = new CameraThread(capture, imageView);
         videoCaptureThread.setDaemon(true);
         videoCaptureThread.start();
 
-        Thread videoCaptureThread1 = new CameraThread();
+        Thread videoCaptureThread1 = new CameraThread(capture1, imageView1);
         videoCaptureThread1.setDaemon(true);
         videoCaptureThread1.start();
 
         stage.setTitle("Video Capture");
 
+        HBox root = new HBox();
+
         // Create a JavaFX VBox to hold the ImageView
-        VBox vbox = new VBox();
+        HBox vbox = new HBox();
+        HBox vbox1 = new HBox();
         vbox.getChildren().add(imageView);
-        vbox.getChildren().add(imageView1);
+        vbox1.getChildren().add(imageView1);
+        // vbox1.translateXProperty();
+        root.getChildren().add(vbox);
+        root.getChildren().add(vbox1);
+        vbox.setStyle("-fx-border-color:darkblue ; \n"
+                + "-fx-border-insets:3;\n"
+                + "-fx-border-radius:7;\n"
+                + "-fx-border-width:3.0;");
 
         // Create a JavaFX Scene with the VBox and set it on the Stage
-        Scene scene = new Scene(vbox, 640, 480);
+        Scene scene = new Scene(root, 640, 480);
         stage.setScene(scene);
         stage.show();
 
