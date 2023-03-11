@@ -16,28 +16,28 @@ import org.opencv.videoio.VideoCapture;
 import org.opencv.imgcodecs.Imgcodecs;
 
 public class capture extends Application {
-
-    // Make the imageView accessible to all the threads
-    volatile public ImageView imageView = new ImageView();
-    volatile public ImageView imageView1 = new ImageView();
+    // Start the video capture thread
 
     class CameraThread extends Thread {
 
         private final VideoCapture capture;
         private final Mat frame;
         private final ImageView imageView;
+        private final int ThreadId;
 
-        public CameraThread(int capture, ImageView imageView) {
+        public CameraThread(int capture, ImageView imageView, int ThreadId) {
             this.capture = new VideoCapture(capture);
             this.frame = new Mat();
             this.imageView = imageView;
+            this.ThreadId = ThreadId;
 
         }
 
-        public CameraThread(String capture, ImageView imageView) {
+        public CameraThread(String capture, ImageView imageView, int ThreadId) {
             this.capture = new VideoCapture(capture);
             this.frame = new Mat();
             this.imageView = imageView;
+            this.ThreadId = ThreadId;
         }
 
         @Override
@@ -73,35 +73,50 @@ public class capture extends Application {
 
     @Override
     public void start(Stage stage) {
+        // IP/index/filename of the cameras
+        String[] captures = {
+                "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery001_x264.mp4",
+                "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery002_x264.mp4",
+                "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery003_x264.mp4",
+                "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery004_x264.mp4" };
 
-        // Start the video capture thread
-        String capture1 = "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery001_x264.mp4";
-        String capture = "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery003_x264.mp4";
+        // Creating Image views for the frames to be captured
+        ImageView[] imageView = new ImageView[captures.length];
+        for (int i = 0; i < captures.length; i++) {
+            ImageView view = new ImageView();
+            imageView[i] = view;
+        }
 
-        Thread videoCaptureThread = new CameraThread(capture, imageView);
-        videoCaptureThread.setDaemon(true);
-        videoCaptureThread.start();
+        for (int i = 0; i < captures.length; i++) {
+            Thread videoCaptureThread = new CameraThread(captures[i], imageView[i], i);
+            videoCaptureThread.setDaemon(true);
+            videoCaptureThread.start();
+        }
 
-        Thread videoCaptureThread1 = new CameraThread(capture1, imageView1);
-        videoCaptureThread1.setDaemon(true);
-        videoCaptureThread1.start();
+        // Thread videoCaptureThread1 = new CameraThread(capture1, imageView1);
+        // videoCaptureThread1.setDaemon(true);
+        // videoCaptureThread1.start();
 
         stage.setTitle("Video Capture");
 
         HBox root = new HBox();
 
-        // Create a JavaFX VBox to hold the ImageView
-        HBox vbox = new HBox();
-        HBox vbox1 = new HBox();
-        vbox.getChildren().add(imageView);
-        vbox1.getChildren().add(imageView1);
-        // vbox1.translateXProperty();
-        root.getChildren().add(vbox);
-        root.getChildren().add(vbox1);
-        vbox.setStyle("-fx-border-color:darkblue ; \n"
-                + "-fx-border-insets:3;\n"
-                + "-fx-border-radius:7;\n"
-                + "-fx-border-width:3.0;");
+        // Create an array of JavaFX HBox to hold the ImageView
+        HBox boxes[] = new HBox[captures.length];
+        for (int i = 0; i < captures.length; i++) {
+            HBox hbox = new HBox();
+            boxes[i] = hbox;
+
+        }
+        for (int i = 0; i < boxes.length; i++) {
+
+            boxes[i].getChildren().add(imageView[i]);
+            root.getChildren().add(boxes[i]);
+            boxes[i].setStyle("-fx-border-color:darkblue ; \n"
+                    + "-fx-border-insets:3;\n"
+                    + "-fx-border-radius:7;\n"
+                    + "-fx-border-width:3.0;");
+        }
 
         // Create a JavaFX Scene with the VBox and set it on the Stage
         Scene scene = new Scene(root, 640, 480);
