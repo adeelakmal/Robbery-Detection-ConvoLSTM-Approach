@@ -1,11 +1,14 @@
 import javafx.application.Application;
-// import javafx.scene.Group;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-// import javafx.scene.layout.VBox;
-import javafx.scene.layout.HBox;
+import javafx.scene.layout.GridPane;
+import javafx.application.Platform;
+// import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 
 import java.io.ByteArrayInputStream;
 
@@ -20,10 +23,10 @@ public class capture extends Application {
 
     class CameraThread extends Thread {
 
-        private final VideoCapture capture;
-        private final Mat frame;
-        private final ImageView imageView;
-        private final int ThreadId;
+        private volatile VideoCapture capture;
+        private volatile Mat frame;
+        private volatile ImageView imageView;
+        private volatile int ThreadId;
 
         public CameraThread(int capture, ImageView imageView, int ThreadId) {
             this.capture = new VideoCapture(capture);
@@ -45,84 +48,109 @@ public class capture extends Application {
 
             while (true) {
                 synchronized (this) {
+                    frame = new Mat();
                     if (capture.read(frame)) {
 
                         // Convert the OpenCV frame to a JavaFX image
                         Image image = convertMatToImage(frame);
 
                         // Display the image in the ImageView
-                        imageView.setImage(image);
-                        // imageView1.setImage(image);
+                        // imageView.setImage(image);
+                        Platform.runLater(() -> imageView.setImage(image));
+                    } else {
+                        System.err.println("Error: could not read frame from capture device.");
+                        break;
                     }
+
                 }
             }
+            capture.release();
+
         }
 
+        // Maybe remove this function because it is causing issues in frame capture
         private Image convertMatToImage(Mat mat) {
             // Convert the Mat object to a byte array
             MatOfByte buffer = new MatOfByte();
             Imgcodecs.imencode(".png", mat, buffer);
-            byte[] imageData = buffer.toArray();
-
             // Convert the byte array to a JavaFX image
-            ByteArrayInputStream inputStream = new ByteArrayInputStream(imageData);
-            return new Image(inputStream);
+            Image image = new Image(new ByteArrayInputStream(buffer.toArray()));
+
+            return image;
         }
 
     }
 
     @Override
     public void start(Stage stage) {
+
+        GridPane grid = new GridPane();
+        grid.setPadding(new Insets(10));
+        grid.setHgap(10);
+        grid.setVgap(10);
         // IP/index/filename of the cameras
         String[] captures = {
                 "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery001_x264.mp4",
                 "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery002_x264.mp4",
                 "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery003_x264.mp4",
-                "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery004_x264.mp4" };
+                "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery004_x264.mp4",
+                "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery005_x264.mp4",
+                "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery006_x264.mp4",
+                "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery007_x264.mp4",
+                "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery008_x264.mp4",
+                "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery009_x264.mp4" };
 
         // Creating Image views for the frames to be captured
         ImageView[] imageView = new ImageView[captures.length];
+        Rectangle[] borders = new Rectangle[captures.length];
         for (int i = 0; i < captures.length; i++) {
             ImageView view = new ImageView();
+            view.setFitHeight(144);
+            view.setFitWidth(256);
+
+            Rectangle border = new Rectangle(256, 144, Color.TRANSPARENT);
+            border.setStroke(Color.RED);
+            border.setStrokeWidth(2);
+
             imageView[i] = view;
+            borders[i] = border;
         }
 
+        Thread[] threads = new CameraThread[captures.length];
         for (int i = 0; i < captures.length; i++) {
-            Thread videoCaptureThread = new CameraThread(captures[i], imageView[i], i);
-            videoCaptureThread.setDaemon(true);
-            videoCaptureThread.start();
+            threads[i] = new CameraThread(captures[i], imageView[i], i);
+            threads[i].setDaemon(true);
+            threads[i].start();
         }
-
-        // Thread videoCaptureThread1 = new CameraThread(capture1, imageView1);
-        // videoCaptureThread1.setDaemon(true);
-        // videoCaptureThread1.start();
 
         stage.setTitle("Video Capture");
 
-        HBox root = new HBox();
+        // Putting all the ImageViews inside a 3x3 grid by checking the total amount in
+        // the captures array
+        int TOTAL_CAMERAS = captures.length;
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (TOTAL_CAMERAS > 0) {
+                    TOTAL_CAMERAS--;
+                    grid.add(imageView[TOTAL_CAMERAS], i, j);
+                    grid.add(borders[TOTAL_CAMERAS], i, j);
+                }
+            }
 
-        // Create an array of JavaFX HBox to hold the ImageView
-        HBox boxes[] = new HBox[captures.length];
-        for (int i = 0; i < captures.length; i++) {
-            HBox hbox = new HBox();
-            boxes[i] = hbox;
-
-        }
-        for (int i = 0; i < boxes.length; i++) {
-
-            boxes[i].getChildren().add(imageView[i]);
-            root.getChildren().add(boxes[i]);
-            boxes[i].setStyle("-fx-border-color:darkblue ; \n"
-                    + "-fx-border-insets:3;\n"
-                    + "-fx-border-radius:7;\n"
-                    + "-fx-border-width:3.0;");
         }
 
         // Create a JavaFX Scene with the VBox and set it on the Stage
-        Scene scene = new Scene(root, 640, 480);
+        Scene scene = new Scene(grid, 820, 480);
         stage.setScene(scene);
         stage.show();
 
+        // try {
+        // for (int i = 0; i < captures.length; i++) {
+        // threads[i].join();
+        // }
+        // } catch (InterruptedException e) {
+        // e.printStackTrace();
+        // }
     }
 
     public static void main(String args[]) {
