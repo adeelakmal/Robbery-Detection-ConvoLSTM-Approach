@@ -18,14 +18,23 @@ import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
+import org.opencv.core.Size;
 import org.opencv.videoio.VideoCapture;
 import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 
 import java.net.*;
 import java.io.*;
 
 public class capture extends Application {
 
+    // To establish connection with Python server
+    String serverName = "127.0.0.1";
+    int port = 8000;
+
+    private Socket clientSocket;
+    private OutputStream outputStream;
+    private InputStream inputStream;
     // IP/index/filename of the cameras
     static String[] sources = {
             "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery001_x264.mp4",
@@ -35,14 +44,15 @@ public class capture extends Application {
             "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery015_x264.mp4",
             "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery016_x264.mp4",
             "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery017_x264.mp4",
-            "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery018_x264.mp4",
-            "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery019_x264.mp4" };
-    // Creating Imageviews and captures for the frames to be captured
-    VideoCapture[] captures = new VideoCapture[sources.length];
-    ImageView[] imageView = new ImageView[sources.length];
-    Rectangle[] borders = new Rectangle[sources.length];
+            "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery018_x264.mp4" };
 
-    private static final int NUM_SOURCES = sources.length; // Number of video sources
+    static int[] sources1 = { 0 };
+    // Creating Imageviews and captures for the frames to be captured
+    static VideoCapture[] captures = new VideoCapture[sources.length + sources1.length];
+    ImageView[] imageView = new ImageView[sources.length + sources1.length];
+    Rectangle[] borders = new Rectangle[sources.length + sources1.length];
+
+    private static final int NUM_SOURCES = sources.length + sources1.length; // Number of video sources
     private static final int FRAME_RATE = 25; // Frame rate of the video
 
     // Executor to create seperate threads for frame capture
@@ -56,40 +66,33 @@ public class capture extends Application {
 
         // Convert the byte array to a JavaFX image
         Image image = new Image(new ByteArrayInputStream(buffer.toArray()));
+        // Code to send pixel data to python
 
+        buffer = new MatOfByte(); // Free buffer from the space
         return image;
     }
 
     @Override
     public void start(Stage stage) {
+
         try {
-
-            // To establish connection with Python server
-            String serverName = "127.0.0.1";
-            int port = 8000;
-
-            Socket clientSocket = new Socket(serverName, port);
-            OutputStream outputStream = clientSocket.getOutputStream();
-            InputStream inputStream = clientSocket.getInputStream();
-
-            // Sending a message to server
-            String message = "Hello from the client!";
-            outputStream.write(message.getBytes());
-
-            clientSocket.close();
-            outputStream.close();
-            inputStream.close();
+            clientSocket = new Socket(serverName, port);
+            outputStream = clientSocket.getOutputStream();
+            inputStream = clientSocket.getInputStream();
         } catch (IOException e) {
             e.printStackTrace();
+            ;
         }
         GridPane grid = new GridPane();
         grid.setPadding(new Insets(10));
         grid.setHgap(10);
         grid.setVgap(10);
 
-        // VideoCapture[] captures = new VideoCapture[sources.length];
         for (int i = 0; i < sources.length; i++) {
             captures[i] = new VideoCapture(sources[i]);
+        }
+        for (int i = 0; i < sources1.length; i++) {
+            captures[sources.length + i] = new VideoCapture(sources1[i]);
         }
 
         for (int i = 0; i < sources.length; i++) {
@@ -104,22 +107,72 @@ public class capture extends Application {
             imageView[i] = view;
             borders[i] = border;
         }
+        for (int i = 0; i < sources1.length; i++) {
+            ImageView view = new ImageView();
+            view.setFitHeight(144);
+            view.setFitWidth(256);
+
+            Rectangle border = new Rectangle(256, 144, Color.TRANSPARENT);
+            border.setStroke(Color.BLUE);
+            border.setStrokeWidth(2);
+
+            imageView[sources.length + i] = view;
+            borders[sources.length + i] = border;
+        }
 
         // Start the video capture threads
         for (int i = 0; i < NUM_SOURCES; i++) {
             final int index = i;
             executor.scheduleAtFixedRate(() -> {
                 // Capture the frame
-                Mat frame = new Mat(640, 480, CvType.CV_8UC3);
+                Mat frame = new Mat(240, 320, CvType.CV_8UC3);
+                byte[][] capturedFrames = new byte[10][];
+
                 if (captures[index].read(frame)) {
+                    // Resizing image to 100 X 100px
+                    Mat resizedFrame = new Mat();
+                    Imgproc.resize(frame, resizedFrame, new Size(100, 100));
+                    frame.release();
 
-                    // System.out.println(frame.get(10, 10)[0]);
-
+                    int height = resizedFrame.rows();
+                    int width = resizedFrame.cols();
+                    System.out.println("Height: " + height + " width: " + width);
                     // Convert the frame to an image
-                    Image image = convertMatToImage(frame);
+                    Image image = convertMatToImage(resizedFrame);
 
                     // Update the image view
                     Platform.runLater(() -> imageView[index].setImage(image));
+
+                    // Converting mat to a byte array
+                    byte[] data = new byte[resizedFrame.channels() * width * height];
+                    resizedFrame.get(0, 0, data);
+
+                    capturedFrames[index] = data;
+
+                    // if (capturedFrames.length >= 10) {
+                    try {
+                        outputStream.write(index);
+                        outputStream.write(data);
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    // }
+
+                    // Remove the frame object from memory
+                    resizedFrame.release();
+
+                    // Add shutdown hook to close socket client
+                    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                        try {
+                            clientSocket.close();
+                            outputStream.close();
+                            inputStream.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }));
+
                 }
 
             }, 0, 1000 / FRAME_RATE, TimeUnit.MILLISECONDS);
@@ -129,7 +182,7 @@ public class capture extends Application {
 
         // Putting all the ImageViews inside a 3x3 grid by checking the total amount in
         // the captures array
-        int TOTAL_CAMERAS = sources.length;
+        int TOTAL_CAMERAS = sources.length + sources1.length;
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 if (TOTAL_CAMERAS > 0) {
@@ -162,9 +215,7 @@ public class capture extends Application {
     }
 
     public static void main(String args[]) {
-
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
         launch(args);
-
     }
 }
