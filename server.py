@@ -1,7 +1,7 @@
 import cv2
 import time
 import socket
-
+import struct
 import tensorflow as tf
 import numpy as np
 from threading import Thread
@@ -38,9 +38,13 @@ size = 30000
 
 
 def captureFrame():
-    # receive the length of the serialized data
-    videoNo = client_socket.recv(4)
+
     while len(arrangedFrames[0]) < 1000:
+
+        # receive the length of the videoNo
+        int_bytes = client_socket.recv(4)
+        videoNo = int.from_bytes(int_bytes, byteorder='big')
+        print(videoNo)
 
         data = bytearray()
         packet = client_socket.recv(size)
@@ -64,7 +68,6 @@ def captureFrame():
         np_array = np.frombuffer(padded_byte_array, dtype=np.uint8)
         # collectedFrames.append(np_array)
         arrangedFrames[videoNo].append(np_array)
-        videoNo += 1
 
 
 def arrangeFrames():
@@ -80,13 +83,13 @@ def arrangeFrames():
 
 
 captureThread = Thread(target=captureFrame)
-arrangeThread = Thread(target=arrangeFrames)
+# arrangeThread = Thread(target=arrangeFrames)
 
 captureThread.start()
-arrangeThread.start()
+# arrangeThread.start()
 
 captureThread.join()
-arrangeThread.join()
+# arrangeThread.join()
 workedframes = []
 out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc(
     'M', 'J', 'P', 'G'), 30, (100, 100))
