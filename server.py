@@ -2,6 +2,7 @@ import cv2
 import time
 import socket
 import struct
+import json
 import tensorflow as tf
 import numpy as np
 from threading import Thread
@@ -27,7 +28,8 @@ print(host)
 waitTime = 0.5
 frameCount = 0
 collectedFrames = []
-arrangedFrames = [[]]*9
+# arrangedFrames = [[]]*9
+arrangedFrames = {}
 
 print("Waiting for connection...")
 client_socket, addr = server_socket.accept()
@@ -39,16 +41,17 @@ size = 30000
 
 def captureFrame():
 
-    while len(arrangedFrames[0]) < 1000:
+    while len(collectedFrames) < 1000:
 
-        # receive the length of the videoNo
-        int_bytes = client_socket.recv(4)
-        videoNo = int.from_bytes(int_bytes, byteorder='big')
-        print(videoNo)
+        # Receive the byte array size
+        data = client_socket.recv(size+4)
+        source_id = int.from_bytes(data[:4], 'big')
+        frame_data = data[4:]
+
+        print("Is this it? ", source_id)
 
         data = bytearray()
-        packet = client_socket.recv(size)
-        data.extend(packet)
+        data.extend(frame_data)
 
         # Check if received data is smaller than desired size
         if len(data) < size:
@@ -66,8 +69,13 @@ def captureFrame():
             # If received data is larger or equal to desired size, no padding is needed
             padded_byte_array = data
         np_array = np.frombuffer(padded_byte_array, dtype=np.uint8)
-        # collectedFrames.append(np_array)
-        arrangedFrames[videoNo].append(np_array)
+        collectedFrames.append(np_array)
+
+        if source_id not in arrangedFrames:
+            arrangedFrames[source_id] = []
+
+        # arrangedFrames[source_id].append(frame_data)
+        arrangedFrames[source_id].append(np_array)
 
 
 def arrangeFrames():
@@ -90,16 +98,17 @@ captureThread.start()
 
 captureThread.join()
 # arrangeThread.join()
+
 workedframes = []
 out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc(
     'M', 'J', 'P', 'G'), 30, (100, 100))
 
 
-print(arrangedFrames[0][0].shape)
-print(len(arrangedFrames[0][0]))
-for i in range(len(arrangedFrames[0])):
-    workedframes.append(arrangedFrames[0].pop(0).reshape(100, 100, 3))
-print(workedframes[100].shape)
+# print(arrangedFrames[0][0].shape)
+print(arrangedFrames[0][0])
+for i in range(len(arrangedFrames[7])):
+    workedframes.append(arrangedFrames[7].pop(0).reshape(100, 100, 3))
+# print(workedframes.shape)
 for frame in workedframes:
     out.write(frame)
 

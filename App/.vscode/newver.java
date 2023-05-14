@@ -24,10 +24,10 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.net.*;
-import java.nio.ByteBuffer;
+
 import java.io.*;
 
-public class capture extends Application {
+public class newver extends Application {
 
     public class FrameObject {
         // private int frameId;
@@ -173,29 +173,26 @@ public class capture extends Application {
                     byte[] data = new byte[resizedFrame.channels() * width * height];
                     resizedFrame.get(0, 0, data);
 
-                    byte[] packet = new byte[4 + data.length];
-                    ByteBuffer.wrap(packet).putInt(index).put(data);
-
                     // FrameObject frameObj = new FrameObject(index, data);
 
                     // capturedFrames[index] = data;
 
                     // if (capturedFrames.length >= 10) {
 
-                    try {
-                        // objectMapper = new ObjectMapper();
-                        // String json = objectMapper.writeValueAsString(frameObj);
-                        // byte[] jsonBytes = json.getBytes("UTF-8");
-                        // System.out.println("THIS IS THE JSON " + jsonBytes);
-                        // outputStream.write(index);
-                        // outputStream.write(Integer.toString(index).getBytes("UTF-8"));
-                        // outputStream.flush();
-                        outputStream.write(packet);
-                        outputStream.flush();
+                    // try {
+                    // // objectMapper = new ObjectMapper();
+                    // // String json = objectMapper.writeValueAsString(frameObj);
+                    // // byte[] jsonBytes = json.getBytes("UTF-8");
+                    // // System.out.println("THIS IS THE JSON " + jsonBytes);
+                    // // outputStream.write(index);
+                    // outputStream.write(Integer.toString(index).getBytes("UTF-8"));
+                    // outputStream.flush();
+                    // outputStream.write(data);
+                    // outputStream.flush();
 
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    // } catch (IOException e) {
+                    // e.printStackTrace();
+                    // }
                     // // }
 
                     // Remove the frame object from memory

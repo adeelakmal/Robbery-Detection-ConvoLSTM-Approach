@@ -9,7 +9,7 @@
             "name": "Launch capture",
             "request": "launch",
             "mainClass": "capture",
-            "vmArgs": "--module-path C:/Users/Admin/Downloads/openjfx-19.0.2.1_windows-x64_bin-sdk/javafx-sdk-19.0.2.1/lib --add-modules javafx.controls,javafx.fxml",
+            "vmArgs": "--module-path C:/Users/Admin/Downloads/openjfx-19.0.2.1_windows-x64_bin-sdk/javafx-sdk-19.0.2.1/lib --add-modules javafx.controls,javafx.fxml -XX:+UseSerialGC -Xms1024m -Xmx1024m -verbose:gc",
             "projectName": "Java practice_e1f4115f"
         },
         {
