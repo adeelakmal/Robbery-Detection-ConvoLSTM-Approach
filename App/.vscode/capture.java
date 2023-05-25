@@ -13,6 +13,7 @@ import java.io.ByteArrayInputStream;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.Arrays;
 
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -29,33 +30,13 @@ import java.io.*;
 
 public class capture extends Application {
 
-    public class FrameObject {
-        // private int frameId;
-        private int sourceId;
-        private byte[] frameData;
-
-        public FrameObject(int sourceId, byte[] frameData) {
-            // this.frameId = frameId;
-            this.sourceId = sourceId;
-            this.frameData = frameData;
-        }
-
-        public int getSource() {
-            return sourceId;
-        }
-
-        public byte[] getFrames() {
-            return frameData;
-        }
-    }
-
     // To establish connection with Python server
     String serverName = "127.0.0.1";
-    int port = 8000;
+    int port = 5000;
 
     private Socket clientSocket;
     private OutputStream outputStream;
-    private InputStream inputStream;
+    // private InputStream inputStream;
 
     // IP/index/filename of the cameras
     static String[] sources = {
@@ -75,11 +56,16 @@ public class capture extends Application {
     ImageView[] imageView = new ImageView[sources.length + sources1.length];
     Rectangle[] borders = new Rectangle[sources.length + sources1.length];
 
+    // has the predictions for every source
+    private String[] results = new String[sources.length + sources1.length];
+    private String defaultVal = "Normal";
+
     private static final int NUM_SOURCES = sources.length + sources1.length; // Number of video sources
     private static final int FRAME_RATE = 25; // Frame rate of the video
 
     // Executor to create seperate threads for frame capture
     private static final ScheduledExecutorService executor = Executors.newScheduledThreadPool(NUM_SOURCES);
+    private static final ScheduledExecutorService resultExecutor = Executors.newSingleThreadScheduledExecutor();
 
     // Maybe remove this function because it is causing issues in frame capture
     private Image convertMatToImage(Mat mat) {
@@ -97,14 +83,15 @@ public class capture extends Application {
 
     @Override
     public void start(Stage stage) {
+        Arrays.fill(results, defaultVal);
 
         try {
             clientSocket = new Socket(serverName, port);
             outputStream = clientSocket.getOutputStream();
-            inputStream = clientSocket.getInputStream();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         GridPane grid = new GridPane();
         grid.setPadding(new Insets(5));
         grid.setHgap(5);
@@ -123,11 +110,6 @@ public class capture extends Application {
             view.setFitWidth(256);
 
             Rectangle border = new Rectangle(256, 144, Color.TRANSPARENT);
-            // border.setStroke(Color.BLUE);
-            // if (i == 6) {
-            // border.setStroke(Color.RED);
-            // }
-            // border.setStrokeWidth(2);
 
             imageView[i] = view;
             borders[i] = border;
@@ -161,7 +143,7 @@ public class capture extends Application {
 
                     int height = resizedFrame.rows();
                     int width = resizedFrame.cols();
-                    System.out.println("Height: " + height + " width: " + width);
+                    // System.out.println("Height: " + height + " width: " + width);
                     // Convert the frame to an image
                     Image image = convertMatToImage(resizedFrame);
 
@@ -169,44 +151,39 @@ public class capture extends Application {
                     Platform.runLater(() -> imageView[index].setImage(image));
 
                     // Converting mat to a byte array
+                    // if (isMatImageFull(resizedFrame)) {
 
-                    byte[] data = new byte[resizedFrame.channels() * width * height];
-                    resizedFrame.get(0, 0, data);
+                    ScheduledExecutorService innerScheduler = Executors.newSingleThreadScheduledExecutor();
 
-                    byte[] packet = new byte[4 + data.length];
-                    ByteBuffer.wrap(packet).putInt(index).put(data);
+                    innerScheduler.scheduleAtFixedRate(() -> {
+                        byte[] data = new byte[resizedFrame.channels() * width * height];
+                        resizedFrame.get(0, 0, data);
 
-                    // FrameObject frameObj = new FrameObject(index, data);
+                        byte[] packet = new byte[4 + data.length];
+                        ByteBuffer.wrap(packet).putInt(index).put(data);
 
-                    // capturedFrames[index] = data;
+                        try {
 
-                    // if (capturedFrames.length >= 10) {
+                            outputStream.write(packet);
+                            outputStream.flush();
 
-                    try {
-                        // objectMapper = new ObjectMapper();
-                        // String json = objectMapper.writeValueAsString(frameObj);
-                        // byte[] jsonBytes = json.getBytes("UTF-8");
-                        // System.out.println("THIS IS THE JSON " + jsonBytes);
-                        // outputStream.write(index);
-                        // outputStream.write(Integer.toString(index).getBytes("UTF-8"));
-                        // outputStream.flush();
-                        outputStream.write(packet);
-                        outputStream.flush();
+                        } catch (IOException e) {
+                            // e.printStackTrace();
+                        }
 
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    // // }
+                        // Remove the frame object from memory
+                        resizedFrame.release();
+                        innerScheduler.shutdown();
 
-                    // Remove the frame object from memory
-                    resizedFrame.release();
+                    }, 0, 500, TimeUnit.MILLISECONDS);
+
+                    // }
 
                     // Add shutdown hook to close socket client
                     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                         try {
                             clientSocket.close();
                             outputStream.close();
-                            inputStream.close();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -217,10 +194,54 @@ public class capture extends Application {
             }, 0, 1000 / FRAME_RATE, TimeUnit.MILLISECONDS);
         }
 
+        Runnable readFileTask = () -> {
+            // Read file for information on the results
+            String fileName = "E:/Uni Assignments/SEMESTER 8/FYP/Robbery-Detection-ConvoLSTM-Approach/myfile.txt";
+            File file = new File(fileName);
+
+            // Check if the file is not empty
+            if (file.length() > 0) {
+                try {
+                    FileReader fileReader = new FileReader(file);
+                    BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+                    String line;
+                    int lineNo = 0;
+                    while ((line = bufferedReader.readLine()) != null) {
+                        results[lineNo] = line;
+                        lineNo++;
+                    }
+                    bufferedReader.close();
+                    fileReader.close();
+
+                    // Clear the file
+                    PrintWriter writer = new PrintWriter(file);
+                    writer.print("");
+                    writer.close();
+                } catch (IOException e) {
+                    System.out.println("Error: " + e.getMessage());
+                }
+            }
+            int index = 0;
+            for (String element : results) {
+
+                System.out.println(element);
+
+                if (element.equals("Robbery")) {
+                    borders[index].setStroke(Color.RED);
+                    borders[index].setStrokeWidth(2);
+                    index++;
+                }
+            }
+        };
+
+        resultExecutor.scheduleAtFixedRate(readFileTask, 0, 1000, TimeUnit.MILLISECONDS);
+
         stage.setTitle("Video Capture");
 
         // Putting all the ImageViews inside a 3x3 grid by checking the total amount in
-        // the captures array
+        // the captures
+
         int TOTAL_CAMERAS = sources.length + sources1.length;
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {

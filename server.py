@@ -8,10 +8,10 @@ import numpy as np
 from threading import Thread
 
 # Import saved model
-new_model = tf.keras.models.load_model('model1.h5')
+new_model = tf.keras.models.load_model('new_model.h5')
 
 # Possible classes
-CLASSES = ["Robbery", "Burglary", "Normal", "Fighting"]
+CLASSES = ["Robbery", "Normal"]
 print(new_model.summary())
 
 
@@ -19,7 +19,7 @@ print(new_model.summary())
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # host = socket.gethostname()
 host = "127.0.0.1"
-port = 8000
+port = 5000
 server_socket.bind((host, port))
 server_socket.listen(1)
 print(host)
@@ -28,8 +28,15 @@ print(host)
 waitTime = 0.5
 frameCount = 0
 collectedFrames = []
-# arrangedFrames = [[]]*9
-arrangedFrames = {}
+arrangedFrames = {0: [],
+                  1: [],
+                  2: [],
+                  3: [],
+                  4: [],
+                  5: [],
+                  6: [],
+                  7: [],
+                  7: []}
 
 print("Waiting for connection...")
 client_socket, addr = server_socket.accept()
@@ -40,104 +47,107 @@ size = 30000
 
 
 def captureFrame():
+    count = 0
+    while(1):
+        while len(arrangedFrames[7]) < 200:
 
-    while len(collectedFrames) < 1000:
+            # Receive the byte array size
+            data = client_socket.recv(size+4)
+            source_id = int.from_bytes(data[:4], 'big')
+            frame_data = data[4:]
 
-        # Receive the byte array size
-        data = client_socket.recv(size+4)
-        source_id = int.from_bytes(data[:4], 'big')
-        frame_data = data[4:]
+            print("Is this it? ", source_id)
 
-        print("Is this it? ", source_id)
+            data = bytearray()
+            data.extend(frame_data)
 
-        data = bytearray()
-        data.extend(frame_data)
+            # Check if received data is smaller than desired size
+            if len(data) < size:
+                padding_size = size - len(data)
+                padding_value = b'\x00'
 
-        # Check if received data is smaller than desired size
-        if len(data) < size:
-            padding_size = size - len(data)
-            padding_value = b'\x00'
+                # Copying received data
+                padded_byte_array = bytearray(size)
+                padded_byte_array[:len(data)] = data
 
-            # Copying received data
-            padded_byte_array = bytearray(size)
-            padded_byte_array[:len(data)] = data
+                # Fill remaining space with padding value
+                padded_byte_array[len(data):] = padding_value * padding_size
 
-            # Fill remaining space with padding value
-            padded_byte_array[len(data):] = padding_value * padding_size
+            else:
+                # If received data is larger or equal to desired size, no padding is needed
+                padded_byte_array = data
+            np_array = np.frombuffer(padded_byte_array, dtype=np.uint8)
+            # collectedFrames.append(np_array)
 
-        else:
-            # If received data is larger or equal to desired size, no padding is needed
-            padded_byte_array = data
-        np_array = np.frombuffer(padded_byte_array, dtype=np.uint8)
-        collectedFrames.append(np_array)
+            if source_id not in arrangedFrames:
+                arrangedFrames[source_id] = []
 
-        if source_id not in arrangedFrames:
-            arrangedFrames[source_id] = []
+            # arrangedFrames[source_id].append(frame_data)
 
-        # arrangedFrames[source_id].append(frame_data)
-        arrangedFrames[source_id].append(np_array)
+            arrangedFrames[source_id].append(cv2.resize(
+                np_array.reshape(100, 100, 3), (64, 64)))
+        file = open('myfile.txt', 'w')
+        getResults(file)
+        count += 1
+        saveVideo(count)
 
-
-def arrangeFrames():
-    # videoNo = 0
-    while len(arrangedFrames[0]) < 1000:
-        # if videoNo == 9:
-        #     videoNo = 0
-        # if len(collectedFrames) > 0:
-        #     arrangedFrames[videoNo].append(collectedFrames.pop(0))
-        #     videoNo += 1
-        print(f"Received data from client: {len(arrangedFrames[0])}")
-        # print(f"Received data from client: {arrangedFrames[0]}")
+        for key in arrangedFrames.keys():
+            arrangedFrames[key] = []
 
 
-captureThread = Thread(target=captureFrame)
-# arrangeThread = Thread(target=arrangeFrames)
+def getResults(file):
+    prediction = getPrediction(arrangedFrames.values())
+    print(prediction)
+    for i in prediction:
+        ans = CLASSES[np.argmax(i)]
+        print(ans)
+        file.write(ans + '\n')
+    file.close()
 
-captureThread.start()
-# arrangeThread.start()
-
-captureThread.join()
-# arrangeThread.join()
-
-workedframes = []
-out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc(
-    'M', 'J', 'P', 'G'), 30, (100, 100))
+    # sending results to the client
+    # client_socket.sendall(len(ans).to_bytes(4, 'big'))
+    # client_socket.sendall(ans.encode())
 
 
-# print(arrangedFrames[0][0].shape)
-print(arrangedFrames[0][0])
-for i in range(len(arrangedFrames[7])):
-    workedframes.append(arrangedFrames[7].pop(0).reshape(100, 100, 3))
-# print(workedframes.shape)
-for frame in workedframes:
-    out.write(frame)
+#  The following function saves the 8th (webcam) video as outpy.avi
+def saveVideo(count):
+    workedframes = []
+    out = cv2.VideoWriter('outpy'+str(count)+'.avi', cv2.VideoWriter_fourcc(
+        'M', 'J', 'P', 'G'), 30, (64, 64))
+
+    for i in range(len(arrangedFrames[7])):
+        workedframes.append(arrangedFrames[7].pop(0))
+    for frame in workedframes:
+        out.write(frame)
 
 
 def getPrediction(collected):
-    print(f"Input shape is: {np.asarray(collected).shape} ")
     a = []
-    a.append(collected)
-    print(np.asarray(a).shape)
-    return new_model.predict(np.asarray(a))
+    for video in collected:
+        frames = getFrames(video)
+        print(f"Input shape is: {np.asarray(frames).shape} ")
+        a.append(np.asarray(frames))
+    # print(np.asarray(a).shape)
+    results = new_model.predict(np.asarray(a[:5]))
+    return results
 
 
-# while True:
-#     ret, frame = video.read()
-#     resized_frame = cv2.resize(frame, (64, 64))
-#     normalized_frame = resized_frame / 255
-#     if not ret:
-#         print("frame count: ", frameCount)
-#         break
-#     frameCount += 1
-#     if frameCount % (waitTime * video.get(cv2.CAP_PROP_FPS)):
-#         collectedFrames.append(normalized_frame)
-#     if len(collectedFrames) == 100:
-#         print(f"Time Taken: {waitTime * 100} seconds", )
-#         result = getPrediction(collectedFrames)
+def getFrames(video):
+    frames = []
+    sequenceLength = 30
+    skip = int(len(video)/sequenceLength)
+    for i in range(sequenceLength):
+        if i*skip <= len(video) and len(video) > 30:
+            print("current: ", i*skip, "limit: ", len(video))
+            frames.append(video[i*skip])
+    return frames
 
-#         print(np.argmax(result))
-#         print(CLASSES[np.argmax(result)])
-#         collectedFrames = []
 
+captureThread = Thread(target=captureFrame)
+
+captureThread.start()
+captureThread.join()
+
+# saveVideo()
 client_socket.close()
 cv2.destroyAllWindows()
