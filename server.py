@@ -99,7 +99,12 @@ def getResults(file):
     prediction = getPrediction(arrangedFrames.values())
     print(prediction)
     for i in prediction:
-        ans = CLASSES[np.argmax(i)]
+        if i[0] >= 0.60 and i[0] < 0.70:
+            ans = "Warning"
+        elif i[0] >= 0.70:
+            ans = "Robbery"
+        else:
+            ans = "Normal"
         print(ans)
         file.write(ans + '\n')
     file.close()
@@ -128,7 +133,7 @@ def getPrediction(collected):
         print(f"Input shape is: {np.asarray(frames).shape} ")
         a.append(np.asarray(frames))
     # print(np.asarray(a).shape)
-    results = new_model.predict(np.asarray(a[:5]))
+    results = new_model.predict(np.asarray(a))
     return results
 
 
