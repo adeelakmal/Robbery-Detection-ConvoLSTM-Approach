@@ -36,7 +36,7 @@ arrangedFrames = {0: [],
                   5: [],
                   6: [],
                   7: [],
-                  7: []}
+                  8: []}
 
 print("Waiting for connection...")
 client_socket, addr = server_socket.accept()
@@ -49,7 +49,7 @@ size = 30000
 def captureFrame():
     count = 0
     while(1):
-        while len(arrangedFrames[7]) < 200:
+        while len(arrangedFrames[7]) < 100:
 
             # Receive the byte array size
             data = client_socket.recv(size+4)
@@ -109,12 +109,9 @@ def getResults(file):
         file.write(ans + '\n')
     file.close()
 
-    # sending results to the client
-    # client_socket.sendall(len(ans).to_bytes(4, 'big'))
-    # client_socket.sendall(ans.encode())
-
-
 #  The following function saves the 8th (webcam) video as outpy.avi
+
+
 def saveVideo(count):
     workedframes = []
     out = cv2.VideoWriter('outpy'+str(count)+'.avi', cv2.VideoWriter_fourcc(
