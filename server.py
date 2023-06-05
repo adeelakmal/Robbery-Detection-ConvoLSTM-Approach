@@ -8,7 +8,7 @@ import numpy as np
 from threading import Thread
 
 # Import saved model
-new_model = tf.keras.models.load_model('new_model.h5')
+new_model = tf.keras.models.load_model('new_model_Zaka.h5')
 
 # Possible classes
 CLASSES = ["Robbery", "Normal"]
@@ -56,7 +56,7 @@ def captureFrame():
             source_id = int.from_bytes(data[:4], 'big')
             frame_data = data[4:]
 
-            print("Is this it? ", source_id)
+            # print("Is this it? ", source_id)
 
             data = bytearray()
             data.extend(frame_data)
@@ -87,9 +87,11 @@ def captureFrame():
             arrangedFrames[source_id].append(cv2.resize(
                 np_array.reshape(100, 100, 3), (64, 64)))
         file = open('myfile.txt', 'w')
-        getResults(file)
+        results = getResults(file)
         count += 1
-        saveVideo(count)
+        for (video, result) in enumerate(results):
+            if np.argmax(result) == 0:
+                saveVideo(video, count)
 
         for key in arrangedFrames.keys():
             arrangedFrames[key] = []
@@ -108,17 +110,18 @@ def getResults(file):
         print(ans)
         file.write(ans + '\n')
     file.close()
+    return prediction
 
 #  The following function saves the 8th (webcam) video as outpy.avi
 
 
-def saveVideo(count):
+def saveVideo(video, count):
     workedframes = []
-    out = cv2.VideoWriter('outpy'+str(count)+'.avi', cv2.VideoWriter_fourcc(
+    out = cv2.VideoWriter('outpy'+str(video)+"_"+str(count)+'.avi', cv2.VideoWriter_fourcc(
         'M', 'J', 'P', 'G'), 30, (64, 64))
 
-    for i in range(len(arrangedFrames[7])):
-        workedframes.append(arrangedFrames[7].pop(0))
+    for i in range(len(arrangedFrames[video])):
+        workedframes.append(arrangedFrames[video].pop(0))
     for frame in workedframes:
         out.write(frame)
 
@@ -128,7 +131,8 @@ def getPrediction(collected):
     for video in collected:
         frames = getFrames(video)
         print(f"Input shape is: {np.asarray(frames).shape} ")
-        a.append(np.asarray(frames))
+
+        a.append(np.asarray(frames)/255)
     # print(np.asarray(a).shape)
     results = new_model.predict(np.asarray(a))
     return results

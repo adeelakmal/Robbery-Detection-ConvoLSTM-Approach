@@ -1,6 +1,7 @@
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
+
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
@@ -40,21 +41,34 @@ public class capture extends Application {
 
     // IP/index/filename of the cameras
     static String[] sources = {
-            /* "http://@172.30.66.173:8080/video", */
-            "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery001_x264.mp4",
+            // /* "http://@192.168.0.108:8080/video", */
+
+            // "rtsp://admin:csproject2023@10.16.14.66/ISAPI/Streaming/Channels/101/picture",
+            // "rtsp://admin:csproject2023@10.16.14.67/ISAPI/Streaming/Channels/101/picture",
+            // "rtsp://admin:csproject2023@10.16.14.69/ISAPI/Streaming/Channels/101/picture",
             "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery002_x264.mp4",
             "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery003_x264.mp4",
             "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery004_x264.mp4",
             "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery015_x264.mp4",
             "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery016_x264.mp4",
-            "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery017_x264.mp4",
+            "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery016_x264.mp4",
+            // "E:/Uni Assignments/SEMESTER 7/COMP
+            // 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Robbery/Robbery016_x264.mp4",
+            "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Testing_Normal_Videos_Anomaly/Normal_Videos_006_x264.mp4",
+            "E:/Uni Assignments/SEMESTER 7/COMP 497A/DATASET/rebuilt.Anomaly-Videos-Part-3/Anomaly-Videos-Part-3/Testing_Normal_Videos_Anomaly/Normal_Videos_003_x264.mp4",
+
     };
+
+    // static int lenSources = 5;
+    // static int lenSources1 = 1;
 
     static int[] sources1 = { 0 };
     // Creating Imageviews and captures for the frames to be captured
-    static VideoCapture[] captures = new VideoCapture[sources.length + sources1.length];
-    ImageView[] imageView = new ImageView[sources.length + sources1.length];
-    Rectangle[] borders = new Rectangle[sources.length + sources1.length];
+    static VideoCapture[] captures = new VideoCapture[9];
+    ImageView[] imageView = new ImageView[9];
+    Rectangle[] borders = new Rectangle[9];
+
+    GridPane grid = new GridPane();
 
     // has the predictions for every source
     private String[] results = new String[sources.length + sources1.length];
@@ -83,6 +97,7 @@ public class capture extends Application {
 
     @Override
     public void start(Stage stage) {
+
         Arrays.fill(results, defaultVal);
 
         try {
@@ -92,26 +107,28 @@ public class capture extends Application {
             e.printStackTrace();
         }
 
-        GridPane grid = new GridPane();
         grid.setPadding(new Insets(5));
         grid.setHgap(5);
         grid.setVgap(5);
 
         for (int i = 0; i < sources.length; i++) {
+
             captures[i] = new VideoCapture(sources[i]);
+
         }
         for (int i = 0; i < sources1.length; i++) {
             captures[sources.length + i] = new VideoCapture(sources1[i]);
         }
 
         for (int i = 0; i < sources.length; i++) {
+
             ImageView view = new ImageView();
             view.setFitHeight(144);
             view.setFitWidth(256);
+            imageView[i] = view;
 
             Rectangle border = new Rectangle(256, 144, Color.TRANSPARENT);
 
-            imageView[i] = view;
             borders[i] = border;
         }
         for (int i = 0; i < sources1.length; i++) {
@@ -134,7 +151,6 @@ public class capture extends Application {
                 // Capture the frame
                 Mat frame = new Mat(240, 320, CvType.CV_8UC3);
                 // byte[][] capturedFrames = new byte[10][];
-
                 if (captures[index].read(frame)) {
                     // Resizing image to 100 X 100px
                     Mat resizedFrame = new Mat();
@@ -231,8 +247,17 @@ public class capture extends Application {
                     borders[index].setStroke(Color.RED);
                     borders[index].setStrokeWidth(2);
                     index++;
+                } else if (element.equals("Warning")) {
+                    borders[index].setStroke(Color.YELLOW);
+                    borders[index].setStrokeWidth(2);
+                    index++;
+                } else {
+                    borders[index].setStroke(Color.GREEN);
+                    borders[index].setStrokeWidth(2);
+                    index++;
                 }
             }
+            System.out.println(index);
         };
 
         resultExecutor.scheduleAtFixedRate(readFileTask, 0, 1000, TimeUnit.MILLISECONDS);
@@ -253,7 +278,6 @@ public class capture extends Application {
             }
 
         }
-
         // Create a JavaFX Scene with the VBox and set it on the Stage
         Scene scene = new Scene(grid, 820, 480);
         stage.setScene(scene);
